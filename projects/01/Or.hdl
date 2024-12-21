@@ -1,7 +1,7 @@
 // File name: projects/01/Or.hdl
 /**
  * Or gate:
- * if (a or b) out = 1, else out = 0 
+ * if (a or b) out = 1, else out = 0
  */
 CHIP Or {
     IN a, b;
