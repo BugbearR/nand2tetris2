@@ -1,0 +1,28 @@
+// File name: projects/02/FullAdder.hdl
+/**
+ * Computes the sum of three bits.
+ */
+CHIP FullAdder {
+    IN a, b, c;  // 1-bit inputs
+    OUT sum,     // Right bit of a + b + c
+        carry;   // Left bit of a + b + c
+
+    PARTS:
+    // 9 NAND
+    Nand(a=a, b=b, out=ab);
+    Nand(a=a, b=ab, out=aab);
+    Nand(a=b, b=ab, out=bab);
+    Nand(a=aab, b=bab, out=sab);
+    Nand(a=c, b=sab, out=csab);
+    Nand(a=c, b=csab, out=ccsab);
+    Nand(a=sab, b=csab, out=sabcsab);
+    Nand(a=ccsab, b=sabcsab, out=sum);
+    Nand(a=ab, b=csab, out=carry);
+
+    // 17 NAND
+    // Xor(a=a, b=b, out=xorab); // <- 4 NAND
+    // Xor(a=xorab, b=c, out=sum); // <- 4 NAND
+    // And(a=a, b=b, out=andab); // <- 2 NAND
+    // Or(a=a, b=b, out=orab); // <- 3 NAND
+    // Mux(a=andab, b=orab, sel=c, out=carry); // <- 4 NAND
+}

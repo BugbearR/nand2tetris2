@@ -1,0 +1,20 @@
+// File name: projects/02/HalfAdder.hdl
+/**
+ * Computes the sum of two bits.
+ */
+CHIP HalfAdder {
+    IN a, b;    // 1-bit inputs
+    OUT sum,    // Right bit of a + b
+        carry;  // Left bit of a + b
+
+    PARTS:
+    // 5 NAND
+    Nand(a=a, b=b, out=c);
+    Nand(a=a, b=c, out=ac);
+    Nand(a=b, b=c, out=bc);
+    Nand(a=ac, b=bc, out=sum);
+    Nand(a=c, b=c, out=carry);
+
+    // Xor(a=a, b=b, out=sum); // <- 4 Nand
+    // And(a=a, b=b, out=carry); // <- 2 Nand
+}
