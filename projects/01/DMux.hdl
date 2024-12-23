@@ -9,9 +9,14 @@ CHIP DMux {
     OUT a, b;
 
     PARTS:
-    Not(in=sel, out=notsel);
-    Nand(a=in, b=notsel, out=snota);
-    Nand(a=in, b=sel, out=snotb);
-    Not(in=snota, out=a);
-    Not(in=snotb, out=b);
+    Nand(a=in, b=sel, out=ninsel);
+    Not(in=ninsel, out=b);
+    Nand(a=ninsel, b=in, out=ninninsel);
+    Not(in=ninninsel, out=a);
+
+    // Not(in=sel, out=notsel);
+    // Nand(a=in, b=notsel, out=snota);
+    // Nand(a=in, b=sel, out=snotb);
+    // Not(in=snota, out=a);
+    // Not(in=snotb, out=b);
 }
