@@ -32,7 +32,7 @@ CHIP PC {
         b[14]=notreset,
         b[15]=notreset,
         out=data2);
-    Or(a=reset, b=load, out=load1);
-    Or(a=load1, b=inc, out=load2);
+    Or(a=inc, b=load, out=load1);
+    Or(a=load1, b=reset, out=load2);
     Register(in=data2, load=load2, out=out, out=reg);
 }
