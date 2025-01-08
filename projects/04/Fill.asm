@@ -5,36 +5,36 @@
 // i.e. writes "black" in every pixel. When no key is pressed, 
 // the screen should be cleared.
 (LOOP)
-@KBD
-D=M
-@NOKEY
-D;JEQ
-D=-1
+    @KBD
+    D=M
+    @NOKEY
+    D;JEQ
+    D=-1
 (NOKEY)
-@COLOR
-M=D
+    @COLOR
+    M=D
 
-@8192
-D=A
-@i
-M=D
+    @8192
+    D=A
+    @i
+    M=D
  
 (FILL)
-@SCREEN
-D=A-1
-@i
-D=D+M
-@SCRPOS
-M=D
-@COLOR
-D=M
-@SCRPOS
-A=M
-M=D
-@i
-DM=M-1
-@FILL
-D;JNE
+    @SCREEN
+    D=A-1
+    @i
+    D=D+M
+    @SCRPOS
+    M=D
+    @COLOR
+    D=M
+    @SCRPOS
+    A=M
+    M=D
+    @i
+    DM=M-1
+    @FILL
+    D;JNE
 
-@LOOP
-0;JMP
+    @LOOP
+    0;JMP
