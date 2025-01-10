@@ -1,0 +1,57 @@
+// File name: projects/05/Memory.hdl
+/**
+ * The complete address space of the Hack computer's memory,
+ * including RAM and memory-mapped I/O. 
+ * The chip facilitates read and write operations, as follows:
+ *     Read:  out(t) = Memory[address(t)](t)
+ *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
+ * In words: the chip always outputs the value stored at the memory 
+ * location specified by address. If load=1, the in value is loaded 
+ * into the memory location specified by address. This value becomes 
+ * available through the out output from the next time step onward.
+ * Address space rules:
+ * Only the upper 16K+8K+1 words of the Memory chip are used. 
+ * Access to address>0x6000 is invalid and reads 0. Access to any address
+ * in the range 0x4000-0x5FFF results in accessing the screen memory 
+ * map. Access to address 0x6000 results in accessing the keyboard 
+ * memory map. The behavior in these addresses is described in the Screen
+ * and Keyboard chip specifications given in the lectures and the book.
+ */
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+    // 0x0000-0x3fff
+    Not(in=address[14], out=notadr14, out=ramadr);
+    Not(in=address[13], out=notadr13);
+    And(a=notadr14, b=load, out=loadram);
+
+    // 0x4000-0x5fff
+    And(a=address[14], b=notadr13, out=scradr);
+    And(a=scradr, b=load, out=loadscr);
+
+    // 0x6000
+    Or8Way(in[0..7]=address[0..7], out=notadrlow0);
+    Or8Way(in[0..4]=address[8..12],
+        in[5]=notadr13,
+        in[6]=notadr14,
+        in[7]=false,
+        out=notadrhighkey);
+    Or(a=notadrhighkey, b=notadrlow0, out=notkeyadr);
+    Not(in=notkeyadr, out=keyadr);
+
+    RAM16K(in=in, load=loadram,
+        address[0..13]=address[0..13],
+        out=ramout);
+ 
+    Screen(in=in, load=loadscr,
+        address=address[0..12],
+        out=scrout);
+ 
+    Keyboard(out=keyout);
+ 
+    Mux16(a[0..15]=false, b=keyout, sel=keyadr, out=ioout2);
+    Mux16(a=ioout2, b=scrout, sel=scradr, out=ioout);
+    Mux16(a=ioout, b=ramout, sel=ramadr, out=out);
+}
