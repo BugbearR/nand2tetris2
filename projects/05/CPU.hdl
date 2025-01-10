@@ -1,0 +1,86 @@
+// File name: projects/05/CPU.hdl
+/**
+ * The Hack Central Processing unit (CPU).
+ * Parses the binary code in the instruction input and executes it according to the
+ * Hack machine language specification. In the case of a C-instruction, computes the
+ * function specified by the instruction. If the instruction specifies to read a memory
+ * value, the inM input is expected to contain this value. If the instruction specifies
+ * to write a value to the memory, sets the outM output to this value, sets the addressM
+ * output to the target address, and asserts the writeM output (when writeM = 0, any
+ * value may appear in outM).
+ * If the reset input is 0, computes the address of the next instruction and sets the
+ * pc output to that value. If the reset input is 1, sets pc to 0.
+ * Note: The outM and writeM outputs are combinational: they are affected by the
+ * instruction's execution during the current cycle. The addressM and pc outputs are
+ * clocked: although they are affected by the instruction's execution, they commit to
+ * their new values only in the next cycle.
+ */
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    // A-instruction: 0vvvvvvvvvvvvvvv (v=value)
+    // C-instruction: 111accccccdddjjj
+    //               (a=a-bit, c=comp bits, d=dest bits, j=jump bits)
+    // dest bits A:bit[5], D:bit[4], M:bit[3]
+    // jump bits lt:bit[2], eq:bit[1], gt:bit[0]
+    // a-bit: 0: A, 1: M
+    // comp bits: zx:bit[11], nx:bit[10], zy:bit[9], ny=bit[8], f=bit[7], no=bit[6]
+
+    // For A Register
+    Not(in=instruction[15], out=insta);
+    And(a=instruction[15], b=instruction[5], out=desta);
+    Or(a=insta, b=desta, out=loada);
+    Mux16(a[0..14]=instruction[0..14], a[15]=false,
+        b=outalu,
+        sel=instruction[15], out=ina);
+
+    // For D Register
+    And(a=instruction[15], b=instruction[4], out=destd);
+
+    // For Memory
+    And(a=instruction[15], b=instruction[3], out=writeM, out=destm);
+
+    // For PC
+    Not(in=reset, out=notreset);
+    Not(in=loadpc, out=notloadpc);
+    And(a=notreset, b=notloadpc, out=incpc);
+
+    // Program Counter
+    PC(in=outa, load=loadpc, inc=incpc, reset=reset, out[0..14]=pc);
+
+    // A Ragister
+    ARegister(in=ina, load=loada, out[0..14]=addressM, out=outa);
+
+    // D Register
+    DRegister(in=outalu, load=destd, out=outd);
+
+    Mux16(a=outa, b=inM, sel=instruction[12], out=muxam);
+    ALU(x=outd, y=muxam,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f=instruction[7], 
+        no=instruction[6],
+        out=outM, out=outalu, zr=eq, ng=lt);
+
+    Or(a=eq, b=lt, out=le);
+    Not(in=le, out=gt);
+    And(a=instruction[2], b=lt, out=jlt);
+    And(a=instruction[1], b=eq, out=jeq);
+    And(a=instruction[0], b=gt, out=jgt);
+    Or(a=jgt, b=jeq, out=jgteq);
+    Or(a=jgteq, b=jlt, out=jmp);
+    And(a=instruction[15], b=jmp, out=loadpc);
+}
