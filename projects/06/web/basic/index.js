@@ -17,7 +17,7 @@
         advance() {
             while (this.hasMoreLines()) {
                 let line = this.lines[this.currentLine++];
-                line = line.trimEnd();
+                line = line.trim();
                 if (!(line.startsWith("//") || line === "")) {
                     this.line = line;
                     return true;
@@ -81,6 +81,9 @@
 
     class Code {
         dest(text) {
+            if (text === "") {
+                return "000";
+            }
             const re = /^[ADM]*$/;
             if (!re.test(text) || text.length > 3) {
                 throw new Error("Invalid dest");
@@ -104,6 +107,8 @@
 
         comp(text) {
             switch (text) {
+            case "":
+                return "0101010";
             case "0":
                 return "0101010";
             case "1":
