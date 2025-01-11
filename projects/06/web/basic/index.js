@@ -154,8 +154,8 @@
                 return "1000111";
             case "D&A":
                 return "0000000";
-            case "D&A":
-                return "0000000";
+            case "D&M":
+                return "1000000";
             case "D|A":
                 return "0010101";
             case "D|M":
@@ -271,43 +271,47 @@
         }
     }
 
-    const asm = document.getElementById("asm");
-    const hack = document.getElementById("hack");
-    const assemble = document.getElementById("assemble");
-    assemble.addEventListener("click", () => {
-        // alert("assemble");
-        const asmText = asm.value;
-        const assembler = new HackAssembler(asmText);
-        const hackText = assembler.assemblePass2();
-        hack.value = hackText;
-    });
-    const loadAsm = document.getElementById("load_asm");
-    let fileName;
-    loadAsm.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        fileName = file.name;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            asm.value = e.target.result;
-        };
-        reader.readAsText(file);
-    });
-    const saveHack = document.getElementById("save_hack");
-    saveHack.addEventListener("click", () => {
-        const blob = new Blob([hack.value], {type: "text/plain"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        let outFileName;
-        if (fileName === undefined) {
-            outFileName = "out.hack";
-        }
-        else {
-            outFileName = fileName.replace(/\.asm$/, "");
-            outFileName += ".hack";
-        }
-        a.download = outFileName;
-        a.click();
-        URL.revokeObjectURL(url);
-    });
+    function main() {
+        const asm = document.getElementById("asm");
+        const hack = document.getElementById("hack");
+        const assemble = document.getElementById("assemble");
+        assemble.addEventListener("click", () => {
+            // alert("assemble");
+            const asmText = asm.value;
+            const assembler = new HackAssembler(asmText);
+            const hackText = assembler.assemblePass2();
+            hack.value = hackText;
+        });
+        const loadAsm = document.getElementById("load_asm");
+        let fileName;
+        loadAsm.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            fileName = file.name;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                asm.value = e.target.result;
+            };
+            reader.readAsText(file);
+        });
+        const saveHack = document.getElementById("save_hack");
+        saveHack.addEventListener("click", () => {
+            const blob = new Blob([hack.value], {type: "text/plain"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            let outFileName;
+            if (fileName === undefined) {
+                outFileName = "out.hack";
+            }
+            else {
+                outFileName = fileName.replace(/\.asm$/, "");
+                outFileName += ".hack";
+            }
+            a.download = outFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", main);
 })();
