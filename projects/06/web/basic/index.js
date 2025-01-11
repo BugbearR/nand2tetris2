@@ -138,7 +138,7 @@
             case "A+1":
                 return "0110111";
             case "M+1":
-                return "1110011";
+                return "1110111";
             case "D-1":
                 return "0001110";
             case "A-1":
@@ -155,7 +155,7 @@
                 return "1010011";
             case "A-D":
                 return "0000111";
-            case "A-M":
+            case "M-D":
                 return "1000111";
             case "D&A":
                 return "0000000";
