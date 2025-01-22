@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>VM translater(non control)</title>
+    <link rel="stylesheet" href="index.css" />
+    <script src="index.js"></script>
+  </head>
+  <body>
+    <h1>VM translater(non control)</h1>
+    <div class="two-cols-container">
+      <div class="col">
+        <label>Load vm</label><input type="file" id="load_vm" />
+        <textarea class="col-textarea" id="vm"></textarea>
+      </div>
+      <div class="col-translate"><button id="translate">Translate</button></div>
+      <div class="col">
+        <button id="save_asm">Save asm</button>
+        <textarea class="col-textarea" id="asm"></textarea>
+      </div>
+    </div>
+  </body>
+</html>
