@@ -108,11 +108,17 @@ A=M
 `);
                 break;
             case "neg":
+                this.writeLine(`
+@SP
+A=M-1
+M=-M
+`);
+                    
             case "not":
                 this.writeLine(`
 @SP
 A=M-1
-D=M
+M=!M
 `);
                 break;
             default:
@@ -148,7 +154,7 @@ D;JGT
 D=-1
 @_L${this.labelIndex + 1}
 0;JMP
-@_L${this.labelIndex}
+(_L${this.labelIndex})
 D=0
 (_L${this.labelIndex + 1})
 `);
@@ -162,10 +168,11 @@ D;JLT
 D=-1
 @_L${this.labelIndex + 1}
 0;JMP
-@_L${this.labelIndex}
+(_L${this.labelIndex})
 D=0
 (_L${this.labelIndex + 1})
 `);
+                this.labelIndex += 2;
                 break;
             case "and":
                 this.writeLine(`
@@ -196,6 +203,18 @@ M=D
             default:
                 // nothing to do
             }
+        }
+
+        getStaticAddress(index) {
+            let address = this.staticMap.get(index);
+            if (address === undefined) {
+                if (this.staticMap.size >= 240) {
+                    throw new Error("Too many static variables");
+                }
+                address = this.staticMap.size + 16;
+                this.staticMap.set(index, address);
+            }
+            return address;
         }
 
         // command
@@ -241,7 +260,6 @@ M=D
                 base = "THAT";
                 break;
 
-
             case "pointer":
                 segmentType = POINTER;
                 address = 3;
@@ -265,6 +283,7 @@ M=D
             }
 
             if (command === C_PUSH) {
+                // Get value
                 switch (segmentType) {
                 case BASE_MEMORY_OFFSET:
                     if (index == 0) {
@@ -308,7 +327,7 @@ D=M
                     break;
                 
                 case CONSTANT:
-                    if (!(index >= -1 && index <= 1)) {
+                    if (index < -1 || 1 < index) {
                         this.writeLine(`
 @${index}
 D=A
@@ -317,44 +336,37 @@ D=A
                     break;
 
                 case STATIC:
-                    let staticAdr = staticMap.get(index);
-                    if (staticAdr === undefined) {
-                        if (staticMap.size >= 240) {
-                            throw new Error("Too many static variables");
-                        }
-                        staticAdr = staticMap.size + 16;
-                        staticMap.set(index, staticAdr);
-                    }
-
+                    address = getStaticAddress(index);
                     this.writeLine(`
-@${staticAdr}
+@${address}
 D=M
 `);
                     break;
                 }
 
-                if (segmentType === CONSTANT && (index >= -1 && index <= 1)) {
+                // Push value
+                if (segmentType === CONSTANT && (-1 <= index && index <= 1)) {
+                    // set direct
                     this.writeLine(`
 @SP
-A=M
+AM=M-1
+A=A+1
 M=${index}
-@SP
-M=M+1
 `);
                 }
                 else {
                     this.writeLine(`
 @SP
-A=M
+AM=M-1
+A=A+1
 M=D
-@SP
-M=M+1
 `);
                 }
             }
             else if (command === C_POP) {
                 switch (segmentType) {
                 case BASE_MEMORY_OFFSET:
+                    // Calculate address
                     if (index === 0) {
                         this.writeLine(`
 @${base}
@@ -384,42 +396,33 @@ D=M+D
 
                     this.writeLine(`
 @SP
-A=M
-M=D
+AM=M+1
 A=A-1
-D=M
+M=D
 A=A+1
+D=M
+A=A-1
 A=M
 M=D
-@SP
-M=M-1
 `);
                     break;
 
                 case POINTER:
                     this.writeLine(`
 @SP
-AM=M-1
+AM=M+1
 D=M
 @${address + index}
 M=D
 `);
                     break;
                 case STATIC:
-                    let staticAdr = staticMap.get(index);
-                    if (staticAdr === undefined) {
-                        if (staticMap.size >= 240) {
-                            throw new Error("Too many static variables");
-                        }
-                        staticAdr = staticMap.size + 16;
-                        staticMap.set(index, staticAdr);
-                    }
-
+                    address = getStaticAddress(index);
                     this.writeLine(`
 @SP
-AM=M-1
+AM=M+1
 D=M
-@${staticAdr}
+@${address}
 M=D
 `);
                     break;
