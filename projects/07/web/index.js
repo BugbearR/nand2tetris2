@@ -376,7 +376,7 @@ D=M-1
 @${index}
 D=A
 @${base}
-D=M+D
+D=D+M
 `);
                     }
 
