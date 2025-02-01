@@ -287,7 +287,7 @@ A=M+1
 D=M
 `);
                     }
-                    else if (index == -1) {
+                    else if (index == -1) { // not occur
                         this.writeLine(`
 @${base}
 A=M-1
@@ -299,7 +299,7 @@ D=M
 @${index}
 D=A
 @${base}
-A=M+D
+A=D+M
 D=M
 `);
                     }
