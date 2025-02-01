@@ -491,7 +491,7 @@ M=D
                 outFileName = "out.asm";
             }
             else {
-                outFileName = fileName.replace(/\.asm$/, "");
+                outFileName = fileName.replace(/\.vm$/, "");
                 outFileName += ".asm";
             }
             a.download = outFileName;
