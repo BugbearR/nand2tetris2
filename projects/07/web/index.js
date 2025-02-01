@@ -73,8 +73,17 @@
     class CodeWriter {
         constructor() {
             this.lines = [];
-            this.labelIndex = 0;
-            this.staticMap = new Map();
+            this.labelIndex = 1;
+            this.fileName = "out";
+        }
+
+        setFileName(fileName) {
+            this.fileName = fileName;
+            this.labelIndex = 1;
+        }
+
+        clearCode() {
+            this.lines = [];
         }
 
         getCode() {
@@ -92,14 +101,14 @@
         writeCondOp(op) {
             this.writeLine(`
 D=A-D
-@_L${this.labelIndex}
+@${this.fileName}._L${this.labelIndex}
 D;J${op}
 D=0
-@_L${this.labelIndex + 1}
+@${this.fileName}._L${this.labelIndex + 1}
 0;JMP
-(_L${this.labelIndex})
+(${this.fileName}._L${this.labelIndex})
 D=-1
-(_L${this.labelIndex + 1})
+(${this.fileName}._L${this.labelIndex + 1})
 `);
             this.labelIndex += 2;
         }
@@ -189,18 +198,6 @@ M=D
             default:
                 // nothing to do
             }
-        }
-
-        getStaticAddress(index) {
-            let address = this.staticMap.get(index);
-            if (address === undefined) {
-                if (this.staticMap.size >= 240) {
-                    throw new Error("Too many static variables");
-                }
-                address = this.staticMap.size + 16;
-                this.staticMap.set(index, address);
-            }
-            return address;
         }
 
         // command
@@ -322,9 +319,8 @@ D=A
                     break;
 
                 case STATIC:
-                    address = getStaticAddress(index);
                     this.writeLine(`
-@${address}
+@${this.fileName}.${index}
 D=M
 `);
                     break;
@@ -403,12 +399,11 @@ M=D
 `);
                     break;
                 case STATIC:
-                    address = getStaticAddress(index);
                     this.writeLine(`
 @SP
 AM=M-1
 D=M
-@${address}
+@${this.fileName}.${index}
 M=D
 `);
                     break;
@@ -425,6 +420,10 @@ M=D
             this.vmText = vmText;
             this.parser = new Parser(vmText);
             this.codeWriter = new CodeWriter();
+        }
+
+        setFileName(fileName) {
+            this.codeWriter.setFileName(fileName);
         }
 
         translate() {
@@ -459,6 +458,7 @@ M=D
     }
 
     function main() {
+        let fileName;
         const vm = document.getElementById("vm");
         const asm = document.getElementById("asm");
         const translate = document.getElementById("translate");
@@ -466,11 +466,18 @@ M=D
             // alert("assemble");
             const vmText = vm.value;
             const vmTranslater = new VMTranslater(vmText);
+            let outFileName;
+            if (fileName === undefined) {
+                outFileName = "out";
+            }
+            else {
+                outFileName = fileName.replace(/\.vm$/, "");
+            }
+            vmTranslater.setFileName(outFileName);
             const asmText = vmTranslater.translate();
             asm.value = asmText;
         });
         const loadVm = document.getElementById("load_vm");
-        let fileName;
         loadVm.addEventListener("change", (e) => {
             const file = e.target.files[0];
             fileName = file.name;
