@@ -89,6 +89,21 @@
             this.lines.push.apply(this.lines, asms);
         }
 
+        writeCondOp(op) {
+            this.writeLine(`
+D=A-D
+@_L${this.labelIndex}
+D;J${op}
+D=0
+@_L${this.labelIndex + 1}
+0;JMP
+(_L${this.labelIndex})
+D=-1
+(_L${this.labelIndex + 1})
+`);
+            this.labelIndex += 2;
+        }
+
         writeArithmetic(command) {
             switch (command) {
             case "add":
@@ -137,42 +152,13 @@ D=A-D
 `);
                 break;
             case "eq":
-                this.writeLine(`
-D=A-D
-@_L${this.labelIndex}
-D;JEQ
-D=-1
-(_L${this.labelIndex})
-`);
-                this.labelIndex += 1;
+                this.writeCondOp("EQ");
                 break;
             case "gt":
-                this.writeLine(`
-D=A-D
-@_L${this.labelIndex}
-D;JGT
-D=-1
-@_L${this.labelIndex + 1}
-0;JMP
-(_L${this.labelIndex})
-D=0
-(_L${this.labelIndex + 1})
-`);
-                this.labelIndex += 2;
+                this.writeCondOp("GT");
                 break;
             case "lt":
-                this.writeLine(`
-D=A-D
-@_L${this.labelIndex}
-D;JLT
-D=-1
-@_L${this.labelIndex + 1}
-0;JMP
-(_L${this.labelIndex})
-D=0
-(_L${this.labelIndex + 1})
-`);
-                this.labelIndex += 2;
+                this.writeCondOp("LT");
                 break;
             case "and":
                 this.writeLine(`
