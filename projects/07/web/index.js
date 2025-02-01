@@ -118,7 +118,7 @@ D=-1
 @SP
 AM=M-1
 D=M
-A=A-1
+A=A+1
 A=M
 `);
                 break;
@@ -182,7 +182,7 @@ D=D|A
             case "or":
                 this.writeLine(`
 @SP
-A=M-1
+A=M+1
 M=D
 `);
                 break;
@@ -335,16 +335,16 @@ D=M
                     // set direct
                     this.writeLine(`
 @SP
-AM=M-1
-A=A+1
+AM=M+1
+A=A-1
 M=${index}
 `);
                 }
                 else {
                     this.writeLine(`
 @SP
-AM=M-1
-A=A+1
+AM=M+1
+A=A-1
 M=D
 `);
                 }
@@ -382,12 +382,12 @@ D=M+D
 
                     this.writeLine(`
 @SP
-AM=M+1
-A=A-1
-M=D
+AM=M-1
 A=A+1
-D=M
+M=D
 A=A-1
+D=M
+A=A+1
 A=M
 M=D
 `);
@@ -396,7 +396,7 @@ M=D
                 case POINTER:
                     this.writeLine(`
 @SP
-AM=M+1
+AM=M-1
 D=M
 @${address + index}
 M=D
@@ -406,7 +406,7 @@ M=D
                     address = getStaticAddress(index);
                     this.writeLine(`
 @SP
-AM=M+1
+AM=M-1
 D=M
 @${address}
 M=D
