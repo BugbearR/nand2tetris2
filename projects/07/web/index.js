@@ -127,7 +127,7 @@ D=-1
 @SP
 AM=M-1
 D=M
-A=A+1
+A=A-1
 A=M
 `);
                 break;
@@ -191,7 +191,7 @@ D=D|A
             case "or":
                 this.writeLine(`
 @SP
-A=M+1
+A=M-1
 M=D
 `);
                 break;
@@ -199,6 +199,126 @@ M=D
                 // nothing to do
             }
         }
+
+        writePushD() {
+            this.writePushDByReg("SP");
+        }
+
+        writePushDByReg(reg) {
+            this.writeLine(`
+@${reg}
+AM=M+1
+A=A-1
+M=D
+`);
+        }
+
+        writePopD() {
+            this.writePopDByReg("SP");
+        }
+
+        writePopDByReg(reg) {
+            this.writeLine(`
+@${reg}
+AM=M-1
+D=M
+`);
+        }
+
+        writeStoreDToReg(reg) {
+            this.writeLine(`
+@${reg}
+M=D
+`);
+        }
+
+        writeStoreDToPtrReg(reg) {
+            this.writeLine(`
+@${reg}
+A=M
+M=D
+`);
+        }
+
+        writeLoadDFromPtrReg(reg, index) {
+            if (index == 0) {
+                this.writeLine(`
+@${reg}
+A=M
+D=M
+`);
+                   
+            }
+            else if (index == 1) {
+                this.writeLine(`
+@${reg}
+A=M+1
+D=M
+`);
+            }
+            else if (index == -1) { // not occur
+                this.writeLine(`
+@${reg}
+A=M-1
+D=M
+`);
+            }
+            else {
+                this.writeLine(`
+@${index}
+D=A
+@${reg}
+A=D+M
+D=M
+`);
+            }
+        }
+
+        writeGetPtrIndex(dst, reg, index) {
+            this.writeLine(`
+@${index}
+D=A
+@${reg}
+${dst}=D+M
+`);
+        }
+
+//         writePtrToPtrReg(dst, src, index) {
+//             if (index == 0) {
+//                 this.writeLine(`
+// @${src}
+// D=M
+// @${dst}
+// M=D
+// `);
+
+//             }
+//             else if (index == 1) {
+//                 this.writeLine(`
+// @${src}
+// D=M+1
+// @${dst}
+// M=D
+// `);
+//             }
+//             else if (index == -1) {
+//                 this.writeLine(`
+// @${src}
+// D=M-1
+// @${dst}
+// M=D
+// `);
+//             }
+//             else {
+//                 this.writeLine(`
+// @${index}
+// D=A
+// @${src}
+// D=D+M
+// @${dst}
+// M=D
+// `);
+//             }
 
         // command
         // C_PUSH, C_POP
@@ -269,37 +389,7 @@ M=D
                 // Get value
                 switch (segmentType) {
                 case BASE_MEMORY_OFFSET:
-                    if (index == 0) {
-                        this.writeLine(`
-@${base}
-A=M
-D=M
-`);
-                           
-                    }
-                    else if (index == 1) {
-                        this.writeLine(`
-@${base}
-A=M+1
-D=M
-`);
-                    }
-                    else if (index == -1) { // not occur
-                        this.writeLine(`
-@${base}
-A=M-1
-D=M
-`);
-                    }
-                    else {
-                        this.writeLine(`
-@${index}
-D=A
-@${base}
-A=D+M
-D=M
-`);
-                    }
+                    this.writeLoadDFromPtrReg(base, index);
                     break;
 
                 case POINTER:
@@ -337,12 +427,7 @@ M=${index}
 `);
                 }
                 else {
-                    this.writeLine(`
-@SP
-AM=M+1
-A=A-1
-M=D
-`);
+                    this.writePushD();
                 }
             }
             else if (command === C_POP) {
@@ -350,59 +435,47 @@ M=D
                 case BASE_MEMORY_OFFSET:
                     // Calculate address
                     if (index === 0) {
+                        this.writePopD();
                         this.writeLine(`
 @${base}
-D=M
-`);
-                    }
-                    else if (index == 1) {
-                        this.writeLine(`
-@${base}
-D=M+1
-`);
-                    }
-                    else if (index == -1) {
-                        this.writeLine(`
-@${base}
-D=M-1
-`);
-                    }
-                    else {
-                        this.writeLine(`
-@${index}
-D=A
-@${base}
-D=D+M
-`);
-                    }
-
-                    this.writeLine(`
-@SP
-AM=M-1
-A=A+1
-M=D
-A=A-1
-D=M
-A=A+1
 A=M
 M=D
 `);
+                    }
+                    else if (index == 1) {
+                        this.writePopD();
+                        this.writeLine(`
+@${base}
+A=M+1
+M=D
+`);
+                    }
+                    else if (index == -1) { // not occur
+                        this.writePopD();
+                        this.writeLine(`
+@${base}
+A=M-1
+M=D
+`);
+                    }
+                    else {
+                        this.writeGetPtrIndex("D", base, index);
+                        this.writeStoreDToReg("R15");
+                        this.writePopD();
+                        this.writeStoreDToPtrReg("R15");
+                    }
                     break;
 
                 case POINTER:
+                    this.writePopD();
                     this.writeLine(`
-@SP
-AM=M-1
-D=M
 @${address + index}
 M=D
 `);
                     break;
                 case STATIC:
+                    this.writePopD();
                     this.writeLine(`
-@SP
-AM=M-1
-D=M
 @${this.fileName}.${index}
 M=D
 `);
