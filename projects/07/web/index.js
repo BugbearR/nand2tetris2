@@ -137,7 +137,7 @@ A=M
 A=M-1
 M=-M
 `);
-                    
+                break;
             case "not":
                 this.writeLine(`
 @SP
