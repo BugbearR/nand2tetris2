@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Folder Access Demo with Persistence</title>
+  <style>
+    .file-list {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .file-item {
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .permission-needed {
+      color: red;
+      margin: 10px 0;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Folder Access Demo</h1>
+  <button id="selectFolder">フォルダを選択</button>
+  <div id="permissionNeeded" class="permission-needed">
+    保存されたフォルダへのアクセス許可が必要です。「フォルダを選択」をクリックしてください。
+  </div>
+  <div id="fileList" class="file-list"></div>
+
+  <script>
+    let directoryHandle;
+    const STORAGE_KEY = 'lastAccessedFolder';
+
+    // ページ読み込み時に保存されたフォルダを確認
+    window.addEventListener('load', async () => {
+      try {
+        await loadSavedFolder();
+      } catch (error) {
+        console.log('保存されたフォルダはありません:', error);
+      }
+    });
+
+    // 保存されたフォルダハンドルを読み込む
+    async function loadSavedFolder() {
+      const savedFolder = localStorage.getItem(STORAGE_KEY);
+      if (!savedFolder) return;
+
+      try {
+        // 保存されたフォルダハンドルを復元
+        directoryHandle = await window.showDirectoryPicker({
+          startIn: savedFolder
+        });
+
+        // アクセス権限を確認
+        const permissionStatus = await directoryHandle.requestPermission({ mode: 'read' });
+        if (permissionStatus === 'granted') {
+          await listFiles(directoryHandle);
+        } else {
+          document.getElementById('permissionNeeded').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('保存されたフォルダの読み込みエラー:', error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+
+    async function selectFolder() {
+      try {
+        // フォルダ選択ダイアログを表示
+        directoryHandle = await window.showDirectoryPicker();
+
+        // 選択されたフォルダのパスを保存
+        try {
+          const relativePaths = await directoryHandle.resolve();
+          if (relativePaths) {
+            const folderPath = relativePaths.join('/');
+            localStorage.setItem(STORAGE_KEY, folderPath);
+          }
+        } catch (error) {
+          console.error('フォルダパスの保存エラー:', error);
+        }
+
+        // フォルダ内のファイルを表示
+        document.getElementById('permissionNeeded').style.display = 'none';
+        await listFiles(directoryHandle);
+      } catch (error) {
+        console.error('Error:', error);
+        alert('フォルダの選択中にエラーが発生しました。');
+      }
+    }
+
+    async function listFiles(dirHandle, path = '') {
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = ''; // リストをクリア
+
+      for await (const entry of dirHandle.values()) {
+        const itemPath = path ? `${path}/${entry.name}` : entry.name;
+        const div = document.createElement('div');
+        div.className = 'file-item';
+
+        if (entry.kind === 'file') {
+          // ファイルの場合
+          const file = await entry.getFile();
+          div.textContent = `📄 ${itemPath} (${formatFileSize(file.size)})`;
+
+          // ファイルハンドルを保存（必要な場合）
+          try {
+            const relativePaths = await entry.resolve();
+            if (relativePaths) {
+              const filePath = relativePaths.join('/');
+              localStorage.setItem(`file_${entry.name}`, filePath);
+            }
+          } catch (error) {
+            console.error('ファイルパスの保存エラー:', error);
+          }
+        } else if (entry.kind === 'directory') {
+          // フォルダの場合
+          div.textContent = `📁 ${itemPath}`;
+          // サブフォルダの内容も再帰的に表示
+          await listFiles(entry, itemPath);
+        }
+
+        fileList.appendChild(div);
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // ボタンにイベントリスナーを設定
+    document.getElementById('selectFolder').addEventListener('click', selectFolder);
+  </script>
+</body>
+
+</html>
