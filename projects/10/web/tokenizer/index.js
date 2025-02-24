@@ -357,11 +357,11 @@
             a.href = url;
             let outFileName;
             if (fileName === undefined) {
-                outFileName = "out.xml";
+                outFileName = "outT.xml";
             }
             else {
                 outFileName = fileName.replace(/\.jack$/, "");
-                outFileName += ".xml";
+                outFileName += "T.xml";
             }
             a.download = outFileName;
             a.click();
