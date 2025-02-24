@@ -1,0 +1,25 @@
+.two-cols-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.col {
+    flex: 1;
+    margin: 10px;
+}
+
+.col-textarea {
+    width: 100%;
+    height: 600px;
+}
+
+.col-analyze {
+    margin: 10px;
+    flex: 0.2;
+}
+
+@media (max-width: 600px) {
+    .two-cols-container {
+        flex-direction: column;
+    }
+}
