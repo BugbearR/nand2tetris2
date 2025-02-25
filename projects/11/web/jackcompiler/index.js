@@ -290,6 +290,7 @@
             this.indent = 0;
             this.indentWidth = 2;
             this.ungetTokenInfo = null;
+            this.className = null;
             this.classSymbolTable = {};
             this.classStaticIndex = 0;
             this.classFieldIndex = 0;
@@ -462,7 +463,7 @@
 
             this.fetchKeyword("class");
 
-            const className = this.fetchIdentifier();
+            this.className = this.fetchIdentifier();
 
             this.fetchSymbol("{");
 
@@ -497,6 +498,18 @@
 
             while (true) {
                 const varName = this.fetchIdentifier();
+                let index;
+                if (varKind === "static") {
+                    index = this.classStaticIndex++;
+                }
+                else {
+                    index = this.classFieldIndex++;
+                }
+                this.classSymbolTable[varName] = {
+                    kind: varKind,
+                    type: varType,
+                    index: index
+                };
 
                 this.peekToken();
                 if (!this.matchSymbol(",")) {
@@ -548,11 +561,22 @@
         // parameterList: ((type varName) (',' type varName)*)?
         compileParameterList() {
             this.putOpenBlockTag("parameterList");
+            this.subroutineSymbolTable = {
+                "this": {kind: "arg", type: this.className, index: 0}
+            };
+            this.subroutineArgIndex = 1;
+            this.subroutineLocalIndex = 0;
+
             this.peekToken();
             if (this.matchType()) {
                 while (true) {
                     const varType = this.fetchType();
                     const varName = this.fetchIdentifier();
+                    this.subroutineSymbolTable[varName] = {
+                        kind: "arg",
+                        type: varType,
+                        index: this.subroutineArgIndex++
+                    };
 
                     this.peekToken();
                     if (!this.matchSymbol(",")) {
