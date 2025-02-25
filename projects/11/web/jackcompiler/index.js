@@ -329,6 +329,64 @@
         }
     }
 
+    class VMWriter {
+        constructor() {
+            this.lines = [];
+        }
+
+        writePush(segment, index) {
+            this.lines.push(`push ${segment} ${index}`);
+        }
+
+        writePop(segment, index) {
+            this.lines.push(`pop ${segment} ${index}`);
+        }
+
+        writeArithmetic(command) {
+            this.lines.push(command);
+        }
+
+        writeLabel(label) {
+            this.lines.push(`label ${label}`);
+        }
+        
+        writeGoto(label) {
+            this.lines.push(`goto ${label}`);
+        }
+
+        writeIf(label) {
+            this.lines.push(`if-goto ${label}`);
+        }
+
+        writeCall(name, nArgs) {
+            this.lines.push(`call ${name} ${nArgs}`);
+        }
+
+        writeFunction(name, nLocals) {
+            this.lines.push(`function ${name} ${nLocals}`);
+        }
+
+        writeReturn() {
+            this.lines.push("return");
+        }
+
+        getVm() {
+            return this.lines.join("\n");
+        }
+    }
+
+    const OP_MAP = {
+        "+": "add",
+        "-": "sub",
+        "*": "call Math.multiply 2",
+        "/": "call Math.divide 2",
+        "&": "and",
+        "|": "or",
+        "<": "lt",
+        ">": "gt",
+        "=": "eq"
+    };
+
     class CompilationEngine {
         constructor(filename, tokenizer) {
             this.filename = filename;
@@ -340,6 +398,7 @@
             this.className = null;
             this.classSymbolTable = new SymbolTable();
             this.subroutineSymbolTable = new SymbolTable();
+            this.vmWriter = new VMWriter();
         }
 
         increaseIndent() {
@@ -789,6 +848,7 @@
             this.putCloseBlockTag("returnStatement");
         }
 
+        // expression: term (op term)*
         compileExpression() {
             this.putOpenBlockTag("expression");
 
@@ -803,6 +863,8 @@
                 this.putToken();
 
                 this.compileTerm(false);
+
+                this.vmWriter.writeArithmetic(OP_MAP[this.tokenizer.symbol()]);
             }
 
             this.putCloseBlockTag("expression");
@@ -825,6 +887,13 @@
                 // this.putToken();
                 const intVal = this.tokenizer.intVal();
                 this.putSingleValueTag("integerConstant", `${intVal}`);
+
+                if (0 <= intVal && intVal <= 32767) {
+                    this.vmWriter.writePush("constant", intVal);
+                }
+                else {
+                    this.throwPosMessage(`Invalid integer constant ${intVal}`);
+                }
             }
             else if (this.tokenizer.tokenType() === STRING_CONST) {
                 // this.putToken();
@@ -851,6 +920,13 @@
                     this.putToken();
 
                     this.compileTerm(false);
+
+                    if (this.tokenizer.symbol() === "-") {
+                        this.vmWriter.writeArithmetic("neg");
+                    }
+                    else if (this.tokenizer.symbol() === "~") {
+                        this.vmWriter.writeArithmetic("not");
+                    }
                 }
                 else {
                     this.throwInvalidToken();
@@ -921,6 +997,39 @@
             }
 
             this.putCloseBlockTag("expressionList");
+        }
+
+
+        pushConstant(value) {
+            this.vmWriter.writePush("constant", value);
+        }
+
+        pushVariable(name) {
+            let kind = this.subroutineSymbolTable.kindOf(name);
+            if (kind) {
+                const index = this.subroutineSymbolTable.indexOf(name);
+                if (kind === KIND.ARG) {
+                    this.vmWriter.writePush("argument", index);
+                }
+                else if (kind === KIND.VAR) {
+                    this.vmWriter.writePush("local", index);
+                }
+            }
+            else {
+                kind = this.classSymbolTable.kindOf(name);
+                if (kind) {
+                    const index = this.classSymbolTable.indexOf(name);
+                    if (kind === KIND.STATIC) {
+                        this.vmWriter.writePush("static", index);
+                    }
+                    else if (kind === KIND.FIELD) {
+                        this.vmWriter.writePush("this", index);
+                    }
+                }
+                else {
+                    this.throwPosMessage(`Undefined variable ${name}`);
+                }
+            }
         }
     }
 
