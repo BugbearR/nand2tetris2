@@ -282,6 +282,53 @@
         }
     }
 
+    const KIND = {
+        STATIC: Symbol("static"),
+        FIELD: Symbol("field"),
+        ARG: Symbol("arg"),
+        VAR: Symbol("var")
+    }
+
+    class SymbolTable {
+        constructor() {
+            this.table = {};
+            this.count = new Map(); // initialize in define() and varCount()
+        }
+
+        reset() {
+            this.table = {};
+        }
+
+        define(name, type, kind) {
+            this.table[name] = {
+                type: type,
+                kind: kind,
+                index: this.varCount(kind)
+            };
+            this.count.get(kind)++;
+        }
+
+        varCount(kind) {
+            if (!this.count.has(kind)) {
+                this.count.set(kind, 0);
+                return 0;
+            }
+            return this.count.get(kind);
+        }
+
+        kindOf(name) {
+            return this.table[name].kind;
+        }
+
+        typeOf(name) {
+            return this.table[name].type;
+        }
+
+        indexOf(name) {
+            return this.table[name].index;
+        }
+    }
+
     class CompilationEngine {
         constructor(filename, tokenizer) {
             this.filename = filename;
@@ -291,12 +338,8 @@
             this.indentWidth = 2;
             this.ungetTokenInfo = null;
             this.className = null;
-            this.classSymbolTable = {};
-            this.classStaticIndex = 0;
-            this.classFieldIndex = 0;
-            this.subroutineSymbolTable = {};
-            this.subroutineArgIndex = 0;
-            this.subroutineVarIndex = 0;
+            this.classSymbolTable = new SymbolTable();
+            this.subroutineSymbolTable = new SymbolTable();
         }
 
         increaseIndent() {
@@ -498,18 +541,7 @@
 
             while (true) {
                 const varName = this.fetchIdentifier();
-                let index;
-                if (varKind === "static") {
-                    index = this.classStaticIndex++;
-                }
-                else {
-                    index = this.classFieldIndex++;
-                }
-                this.classSymbolTable[varName] = {
-                    kind: varKind,
-                    type: varType,
-                    index: index
-                };
+                this.classSymbolTable.define(varName, varType, (varKind == "static") ? KIND.STATIC : KIND.FIELD);
 
                 this.peekToken();
                 if (!this.matchSymbol(",")) {
@@ -561,22 +593,14 @@
         // parameterList: ((type varName) (',' type varName)*)?
         compileParameterList() {
             this.putOpenBlockTag("parameterList");
-            this.subroutineSymbolTable = {
-                "this": {kind: "arg", type: this.className, index: 0}
-            };
-            this.subroutineArgIndex = 1;
-            this.subroutineLocalIndex = 0;
+            this.subroutineSymbolTable.define("this", this.className, KIND.ARG);
 
             this.peekToken();
             if (this.matchType()) {
                 while (true) {
                     const varType = this.fetchType();
                     const varName = this.fetchIdentifier();
-                    this.subroutineSymbolTable[varName] = {
-                        kind: "arg",
-                        type: varType,
-                        index: this.subroutineArgIndex++
-                    };
+                    this.subroutineSymbolTable.define(varName, varType, KIND.ARG);
 
                     this.peekToken();
                     if (!this.matchSymbol(",")) {
@@ -626,6 +650,7 @@
 
             while (true) {
                 const variName = this.fetchIdentifier();
+                this.subroutineSymbolTable.define(variName, varType, KIND.VAR);
 
                 this.peekToken();
                 if (!this.matchSymbol(",")) {
