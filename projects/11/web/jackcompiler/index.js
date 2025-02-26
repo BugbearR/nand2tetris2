@@ -5,12 +5,12 @@
     const INT_CONST = Symbol("INT_CONST");
     const STRING_CONST = Symbol("STRING_CONST");
 
-    const KEYWORDS = [
+    const KEYWORD_LITERALS = [
         "class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean",
         "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return"
     ];
 
-    const KEYWORD_SYMBOLS = KEYWORDS.reduce((acc, keyword) => {
+    const KEYWORD_SYMBOLS = KEYWORD_LITERALS.reduce((acc, keyword) => {
         acc[keyword] = Symbol(keyword);
         return acc;
     }, {});
@@ -52,7 +52,7 @@
     class KeywordParser extends TokenParser {
         constructor() {
             super();
-            this.regex = new RegExp(KEYWORDS.join("|"), "y");
+            this.regex = new RegExp(KEYWORD_LITERALS.join("|"), "y");
         }
 
         tokenType() {
@@ -640,6 +640,11 @@
 
             const subroutineName = this.fetchIdentifier();
 
+            this.subroutineSymbolTable.reset();
+            if (this.subroutineKind === KEYWORD_SYMBOLS["method"]) {
+                this.subroutineSymbolTable.define("this", this.className, KIND.ARG);
+            }
+
             this.fetchSymbol("(");
         
             this.compileParameterList();
@@ -698,6 +703,10 @@
             this.vmWriter.writeFunction(`${this.className}.${this.subroutineName}`, this.subroutineSymbolTable.varCount(KIND.VAR));
             if (this.subroutineKind === KEYWORD_SYMBOLS["method"]) {
                 this.vmWriter.writePush("argument", 0);
+                this.vmWriter.writePop("pointer", 0);
+            } else if (this.subroutineKind === KEYWORD_SYMBOLS["constructor"]) {
+                this.vmWriter.writePush("constant", this.classSymbolTable.varCount(KIND.FIELD));
+                this.vmWriter.writeCall("Memory.alloc", 1);
                 this.vmWriter.writePop("pointer", 0);
             }
 
@@ -873,6 +882,7 @@
                 if (hasExpression) {
                     this.throwPosMessage("void function should not have return value");
                 }
+                this.vmWriter.writePush("constant", 0);
             }
             else {
                 if (!hasExpression) {
@@ -949,8 +959,8 @@
 
                 switch (this.tokenizer.keyWord().description) {
                 case "true":
-                    this.vmWriter.writePush("constant", 0);
-                    this.vmWriter.writeArithmetic("not");
+                    this.vmWriter.writePush("constant", 1);
+                    this.vmWriter.writeArithmetic("neg");
                     break;
                 case "false":
                     this.vmWriter.writePush("constant", 0);
@@ -1034,10 +1044,7 @@
                         // class method call
                         classNameForCall = name;
                         if (subroutineNameForCall === "new") {
-                            this.vmWriter.writePush("constant", this.classSymbolTable.varCount(KIND.FIELD));
-                            this.vmWriter.writeCall("Memory.alloc", 1);
-                            // subroutineNameForCall = "constructor"; ???
-                            // stack top is the address of the new object (this)
+                            subroutineNameForCall = "constructor";
                         }
                     }
                     else {
@@ -1124,7 +1131,7 @@
                 if (kind) {
                     const index = this.classSymbolTable.indexOf(name);
                     if (kind === KIND.STATIC) {
-                        this.vmWriter.writePush("static", `${this.className}.${name}`);
+                        this.vmWriter.writePush("static", index);
                     }
                     else if (kind === KIND.FIELD) {
                         this.vmWriter.writePush("this", index);
@@ -1152,7 +1159,7 @@
                 if (kind) {
                     const index = this.classSymbolTable.indexOf(name);
                     if (kind === KIND.STATIC) {
-                        this.vmWriter.writePop("static", `${this.className}.${name}`);
+                        this.vmWriter.writePop("static", index);
                     }
                     else if (kind === KIND.FIELD) {
                         this.vmWriter.writePop("this", index);
