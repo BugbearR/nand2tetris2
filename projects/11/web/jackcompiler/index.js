@@ -624,13 +624,14 @@
                 this.throwInvalidToken();
             }
             this.putToken();
+            this.subroutineKind = this.tokenizer.keyWord();
 
             this.fetchToken();
             if (this.matchKeyword("void")) {
-                // type = this.tokenizer.keyWord();
+                this.subroutineType = this.tokenizer.keyWord();
             }
             else if (this.matchType()) {
-                // type = this.getType();
+                this.subroutineType = this.getType();
             }
             else {
                 this.throwInvalidToken();
@@ -646,6 +647,7 @@
             this.fetchSymbol(")");
 
             this.compileSubroutineBody();
+
             this.putCloseBlockTag("subroutineDec");
         }
 
@@ -691,6 +693,12 @@
                         break;
                     }
                 }
+            }
+
+            this.vmWriter.writeFunction(`${this.className}.${this.subroutineName}`, this.subroutineSymbolTable.varCount(KIND.VAR));
+            if (this.subroutineKind === KEYWORD_SYMBOLS["method"]) {
+                this.vmWriter.writePush("argument", 0);
+                this.vmWriter.writePop("pointer", 0);
             }
 
             this.compileStatements();
@@ -759,6 +767,7 @@
 
             const varName = this.fetchIdentifier();
 
+            let isArray = false;
             this.peekToken();
             if (this.matchSymbol("[")) {
                 this.fetchSymbol("[");
@@ -766,6 +775,7 @@
                 this.compileExpression();
 
                 this.fetchSymbol("]");
+                isArray = true;
             }
 
             this.fetchSymbol("=");
@@ -773,6 +783,18 @@
             this.compileExpression();
 
             this.fetchSymbol(";");
+
+            if (isArray) {
+                this.vmWriter.writePop("temp", 0);
+                this.pushVariable(varName);
+                this.vmWriter.writeArithmetic("add");
+                this.vmWriter.writePop("pointer", 1);
+                this.vmWriter.writePush("temp", 0);
+                this.vmWriter.writePop("that", 0);
+            }
+            else {
+                this.popVariable(varName);
+            }
 
             this.putCloseBlockTag("letStatement");
         }
@@ -839,11 +861,26 @@
 
             this.fetchKeyword("return");
 
+            let hasExpression = false;
             this.peekToken();
             if (!this.matchSymbol(";")) {
                 this.compileExpression();
+                hasExpression = true;
             }
             this.fetchSymbol(";");
+
+            if (this.subroutineType === KEYWORD_SYMBOLS["void"]) {
+                if (hasExpression) {
+                    this.throwPosMessage("void function should not have return value");
+                }
+            }
+            else {
+                if (!hasExpression) {
+                    this.throwPosMessage("non-void function should have return value");
+                }
+            }
+
+            this.vmWriter.writeReturn();
 
             this.putCloseBlockTag("returnStatement");
         }
@@ -899,6 +936,8 @@
                 // this.putToken();
                 const stringVal = this.tokenizer.stringVal();
                 this.putSingleValueTag("stringConstant", escapeXml(stringVal));
+
+                // QQQ Implement string constant
             }
             else if (this.tokenizer.tokenType() === KEYWORD) {
                 if (["true", "false", "null", "this"].includes(this.tokenizer.keyWord().description)) {
@@ -906,6 +945,22 @@
                 }
                 else {
                     this.throwInvalidToken();
+                }
+
+                switch (this.tokenizer.keyWord().description) {
+                case "true":
+                    this.vmWriter.writePush("constant", 0);
+                    this.vmWriter.writeArithmetic("not");
+                    break;
+                case "false":
+                    this.vmWriter.writePush("constant", 0);
+                    break;
+                case "null":
+                    this.vmWriter.writePush("constant", 0);
+                    break;
+                case "this":
+                    this.vmWriter.writePush("pointer", 0);
+                    break;
                 }
             }
             else if (this.tokenizer.tokenType() === SYMBOL) {
@@ -937,37 +992,72 @@
                 this.putToken();
                 // XXX check next token for array or subroutine call or class subroutine call
                 this.peekToken();
+                let nArgs = 0;
                 if (this.matchSymbol("[")) {
                     if (doSpecial) {
                         this.throwInvalidToken();
                     }
                     // array
-                    const varName = name;
+                    this.pushVariable(name);
                     this.fetchSymbol("[");
                     this.compileExpression();
                     this.fetchSymbol("]");
+                    this.vmWriter.writeArithmetic("add");
+                    this.vmWriter.writePop("pointer", 1);
+                    this.vmWriter.writePush("that", 0);
                 }
                 else if (this.matchSymbol("(")) {
                     // subroutine call
-                    const subroutineName = name;
+                    const subroutineNameForCall = name;
+
+                    this.vmWriter.writePush("pointer", 0);
+
                     this.fetchSymbol("(");
-                    this.compileExpressionList();
+                    nArgs = this.compileExpressionList();
                     this.fetchSymbol(")");
+
+                    this.vmWriter.writeCall(`${this.className}.${subroutineNameForCall}`, nArgs);
                 }
                 else if (this.matchSymbol(".")) {
                     this.fetchSymbol(".");
                     // class or object subroutine call
-                    const classVarName = name;
-                    const subroutineName = this.fetchIdentifier();
+                    const varType = this.getVarType(name);
+                    const subroutineNameForCall = this.fetchIdentifier();
+
+                    if (varType === "int" || varType === "char" || varType === "boolean") {
+                        this.throwPosMessage(`Invalid class or object subroutine call ${varType}.${subroutineName}`);
+                    }
+
+                    const isClassMethod = (subroutineNameForCall.charAt(0) === subroutineNameForCall.charAt(0).toUpperCase());
+                    let classNameForCall;
+                    if (isClassMethod) {
+                        // class method call
+                        classNameForCall = name;
+                        if (subroutineNameForCall === "new") {
+                            this.vmWriter.writePush("constant", this.classSymbolTable.varCount(KIND.FIELD));
+                            this.vmWriter.writeCall("Memory.alloc", 1);
+                            // subroutineNameForCall = "constructor"; ???
+                            // stack top is the address of the new object (this)
+                        }
+                    }
+                    else {
+                        // instance method call
+                        this.pushVariable(name);
+                        classNameForCall = varType;
+                    }
+
                     this.fetchSymbol("(");
-                    this.compileExpressionList();
+                    nArgs = this.compileExpressionList();
                     this.fetchSymbol(")");
+
+                    this.vmWriter.writeCall(`${classNameForCall}.${subroutineNameForCall}`, nArgs);
                 }
                 else {
                     if (doSpecial) {
                         this.throwInvalidToken();
                     }
-                    const varName = name;
+
+                    this.pushVariable(name);
                 }
             }
             if (!doSpecial) {
@@ -978,6 +1068,7 @@
         // expressionList: (expression (',' expression)*)?
         compileExpressionList() {
             this.putOpenBlockTag("expressionList");
+            let paramCount = 0;
 
             let isFirst = true;
             while (true) {
@@ -994,14 +1085,27 @@
                     this.fetchSymbol(",");
                 }
                 this.compileExpression();
+                paramCount++;
             }
 
             this.putCloseBlockTag("expressionList");
+            return paramCount;
         }
 
-
-        pushConstant(value) {
-            this.vmWriter.writePush("constant", value);
+        getVarType(name) {
+            let kind = this.subroutineSymbolTable.kindOf(name);
+            if (kind) {
+                return this.subroutineSymbolTable.typeOf(name);
+            }
+            else {
+                kind = this.classSymbolTable.kindOf(name);
+                if (kind) {
+                    return this.classSymbolTable.typeOf(name);
+                }
+                else {
+                    this.throwPosMessage(`Undefined variable ${name}`);
+                }
+            }
         }
 
         pushVariable(name) {
@@ -1020,10 +1124,38 @@
                 if (kind) {
                     const index = this.classSymbolTable.indexOf(name);
                     if (kind === KIND.STATIC) {
-                        this.vmWriter.writePush("static", index);
+                        this.vmWriter.writePush("static", `${this.className}.${name}`);
                     }
                     else if (kind === KIND.FIELD) {
                         this.vmWriter.writePush("this", index);
+                    }
+                }
+                else {
+                    this.throwPosMessage(`Undefined variable ${name}`);
+                }
+            }
+        }
+
+        popVariable(name) {
+            let kind = this.subroutineSymbolTable.kindOf(name);
+            if (kind) {
+                const index = this.subroutineSymbolTable.indexOf(name);
+                if (kind === KIND.ARG) {
+                    this.vmWriter.writePop("argument", index);
+                }
+                else if (kind === KIND.VAR) {
+                    this.vmWriter.writePop("local", index);
+                }
+            }
+            else {
+                kind = this.classSymbolTable.kindOf(name);
+                if (kind) {
+                    const index = this.classSymbolTable.indexOf(name);
+                    if (kind === KIND.STATIC) {
+                        this.vmWriter.writePop("static", `${this.className}.${name}`);
+                    }
+                    else if (kind === KIND.FIELD) {
+                        this.vmWriter.writePop("this", index);
                     }
                 }
                 else {
