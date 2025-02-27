@@ -301,12 +301,12 @@
         }
 
         define(name, type, kind) {
+            const prevCount = this.varCount(kind);
             this.table[name] = {
                 type: type,
                 kind: kind,
-                index: this.varCount(kind)
+                index: prevCount
             };
-            const prevCount = this.varCount(kind);
             this.count.set(kind, prevCount + 1);
         }
 
