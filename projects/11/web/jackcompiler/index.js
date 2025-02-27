@@ -52,7 +52,7 @@
     class KeywordParser extends TokenParser {
         constructor() {
             super();
-            this.regex = new RegExp(KEYWORD_LITERALS.join("|"), "y");
+            this.regex = new RegExp(`(${KEYWORD_LITERALS.join("|")})\\b`, "y");
         }
 
         tokenType() {
@@ -292,11 +292,12 @@
     class SymbolTable {
         constructor() {
             this.table = {};
-            this.count = new Map(); // initialize in define() and varCount()
+            this.count = new Map();
         }
 
         reset() {
             this.table = {};
+            this.count.clear();
         }
 
         define(name, type, kind) {
@@ -305,7 +306,8 @@
                 kind: kind,
                 index: this.varCount(kind)
             };
-            this.count.get(kind)++;
+            const prevCount = this.varCount(kind);
+            this.count.set(kind, prevCount + 1);
         }
 
         varCount(kind) {
@@ -317,15 +319,24 @@
         }
 
         kindOf(name) {
-            return this.table[name].kind;
+            if (this.table[name]) {
+                return this.table[name].kind;
+            }
+            return null;
         }
 
         typeOf(name) {
-            return this.table[name].type;
+            if (this.table[name]) {
+                return this.table[name].type;
+            }
+            return null;
         }
 
         indexOf(name) {
-            return this.table[name].index;
+            if (this.table[name]) {
+                return this.table[name].index;
+            }
+            return null;
         }
     }
 
@@ -399,6 +410,7 @@
             this.classSymbolTable = new SymbolTable();
             this.subroutineSymbolTable = new SymbolTable();
             this.vmWriter = new VMWriter();
+            this.labelIndex = 0;
         }
 
         increaseIndent() {
@@ -411,6 +423,10 @@
 
         getXml() {
             return this.lines.join("\n");
+        }
+
+        getVm() {
+            return this.vmWriter.getVm();
         }
 
         putLine(s) {
@@ -559,6 +575,10 @@
             return this.getType(); // QQQ fix multi type value.
         }
 
+        publishLabel() {
+            return `${this.className}_${this.labelIndex++}`;
+        }
+
         // class: "class" className "{" classVarDec* subroutineDec* "}"
         compileClass() {
             this.putOpenBlockTag("class");
@@ -638,12 +658,9 @@
             }
             this.putToken();
 
-            const subroutineName = this.fetchIdentifier();
+            this.subroutineName = this.fetchIdentifier();
 
             this.subroutineSymbolTable.reset();
-            if (this.subroutineKind === KEYWORD_SYMBOLS["method"]) {
-                this.subroutineSymbolTable.define("this", this.className, KIND.ARG);
-            }
 
             this.fetchSymbol("(");
         
@@ -659,7 +676,10 @@
         // parameterList: ((type varName) (',' type varName)*)?
         compileParameterList() {
             this.putOpenBlockTag("parameterList");
-            this.subroutineSymbolTable.define("this", this.className, KIND.ARG);
+            // implicit argument "this"
+            if (this.subroutineKind === KEYWORD_SYMBOLS["method"]) {
+                this.subroutineSymbolTable.define("this", this.className, KIND.ARG);
+            }
 
             this.peekToken();
             if (this.matchType()) {
@@ -818,17 +838,32 @@
             this.compileExpression();
             this.fetchSymbol(")");
 
+            this.vmWriter.writeArithmetic("not");
+            const labelElse = this.publishLabel();
+            this.vmWriter.writeIf(labelElse);
+
             this.fetchSymbol("{");
             this.compileStatements();
             this.fetchSymbol("}");
+
 
             this.peekToken();
             if (this.matchKeyword("else")) {
                 this.fetchKeyword("else");
 
+                const labelIfEnd = this.publishLabel();
+
+                this.vmWriter.writeGoto(labelIfEnd);
+                this.vmWriter.writeLabel(labelElse);
+
                 this.fetchSymbol("{");
                 this.compileStatements();
                 this.fetchSymbol("}");
+
+                this.vmWriter.writeLabel(labelIfEnd);
+            }
+            else {
+                this.vmWriter.writeLabel(labelElse);
             }
 
             this.putCloseBlockTag("ifStatement");
@@ -840,13 +875,23 @@
 
             this.fetchKeyword("while");
 
+            const labelWhileLoop = this.publishLabel();
+            this.vmWriter.writeLabel(labelWhileLoop);
+
             this.fetchSymbol("(");
             this.compileExpression();
             this.fetchSymbol(")");
 
+            this.vmWriter.writeArithmetic("not");
+            const labelEndWhile = this.publishLabel();
+            this.vmWriter.writeIf(labelEndWhile);
+
             this.fetchSymbol("{");
             this.compileStatements();
             this.fetchSymbol("}");
+
+            this.vmWriter.writeGoto(labelWhileLoop);
+            this.vmWriter.writeLabel(labelEndWhile);
 
             this.putCloseBlockTag("whileStatement");
         }
@@ -858,6 +903,8 @@
             this.fetchKeyword("do");
 
             this.compileTerm(true); // subroutineCall only
+
+            this.vmWriter.writePop("temp", 0); // dummy read
 
             this.fetchSymbol(";");
 
@@ -908,10 +955,11 @@
                 }
                 this.fetchToken();
                 this.putToken();
+                const op = this.tokenizer.symbol();
 
                 this.compileTerm(false);
 
-                this.vmWriter.writeArithmetic(OP_MAP[this.tokenizer.symbol()]);
+                this.vmWriter.writeArithmetic(OP_MAP[op]);
             }
 
             this.putCloseBlockTag("expression");
@@ -947,7 +995,12 @@
                 const stringVal = this.tokenizer.stringVal();
                 this.putSingleValueTag("stringConstant", escapeXml(stringVal));
 
-                // QQQ Implement string constant
+                this.vmWriter.writePush("constant", stringVal.length);
+                this.vmWriter.writeCall("String.new", 1);
+                for (let i = 0; i < stringVal.length; i++) {
+                    this.vmWriter.writePush("constant", stringVal.charCodeAt(i)); // 0-32767 only
+                    this.vmWriter.writeCall("String.appendChar", 2);
+                }
             }
             else if (this.tokenizer.tokenType() === KEYWORD) {
                 if (["true", "false", "null", "this"].includes(this.tokenizer.keyWord().description)) {
@@ -983,13 +1036,14 @@
                 }
                 else if (["-", "~"].includes(this.tokenizer.symbol())) {
                     this.putToken();
+                    const op = this.tokenizer.symbol();
 
                     this.compileTerm(false);
 
-                    if (this.tokenizer.symbol() === "-") {
+                    if (op === "-") {
                         this.vmWriter.writeArithmetic("neg");
                     }
-                    else if (this.tokenizer.symbol() === "~") {
+                    else if (op === "~") {
                         this.vmWriter.writeArithmetic("not");
                     }
                 }
@@ -1021,9 +1075,10 @@
                     const subroutineNameForCall = name;
 
                     this.vmWriter.writePush("pointer", 0);
+                    nArgs++;
 
                     this.fetchSymbol("(");
-                    nArgs = this.compileExpressionList();
+                    nArgs += this.compileExpressionList();
                     this.fetchSymbol(")");
 
                     this.vmWriter.writeCall(`${this.className}.${subroutineNameForCall}`, nArgs);
@@ -1031,30 +1086,29 @@
                 else if (this.matchSymbol(".")) {
                     this.fetchSymbol(".");
                     // class or object subroutine call
-                    const varType = this.getVarType(name);
+                    const isClassMethod = (name.charAt(0) === name.charAt(0).toUpperCase());
                     const subroutineNameForCall = this.fetchIdentifier();
 
-                    if (varType === "int" || varType === "char" || varType === "boolean") {
-                        this.throwPosMessage(`Invalid class or object subroutine call ${varType}.${subroutineName}`);
-                    }
-
-                    const isClassMethod = (subroutineNameForCall.charAt(0) === subroutineNameForCall.charAt(0).toUpperCase());
                     let classNameForCall;
                     if (isClassMethod) {
                         // class method call
                         classNameForCall = name;
-                        if (subroutineNameForCall === "new") {
-                            subroutineNameForCall = "constructor";
-                        }
                     }
                     else {
                         // instance method call
+                        const varType = this.getVarType(name);
+
+                        if (varType === "int" || varType === "char" || varType === "boolean") {
+                            this.throwPosMessage(`Invalid type subroutine call ${varType}.${subroutineName}`);
+                        }
+    
                         this.pushVariable(name);
                         classNameForCall = varType;
+                        nArgs++;
                     }
 
                     this.fetchSymbol("(");
-                    nArgs = this.compileExpressionList();
+                    nArgs += this.compileExpressionList();
                     this.fetchSymbol(")");
 
                     this.vmWriter.writeCall(`${classNameForCall}.${subroutineNameForCall}`, nArgs);
@@ -1180,14 +1234,15 @@
 
         compile() {
             this.compilationEngine.compileClass();
-            return this.compilationEngine.getXml();
+            // return this.compilationEngine.getXml();
+            return this.compilationEngine.getVm();
         }
     }
 
     function main() {
         let fileName;
         const jack = document.getElementById("jack");
-        const xml = document.getElementById("xml");
+        const vm = document.getElementById("vm");
         const compile = document.getElementById("compile");
         compile.addEventListener("click", () => {
             // alert("assemble");
@@ -1204,8 +1259,8 @@
             }
             const jackCompiler = new JackCompiler(inFileName, jackText);
             // jackCompiler.setFileName(outFileName);
-            const xmlText = jackCompiler.compile();
-            xml.value = xmlText;
+            const vmText = jackCompiler.compile();
+            vm.value = vmText;
         });
         const loadJack = document.getElementById("load_jack");
         loadJack.addEventListener("change", (e) => {
@@ -1219,7 +1274,7 @@
         });
         const saveVm = document.getElementById("save_vm");
         saveVm.addEventListener("click", () => {
-            const blob = new Blob([xml.value], {type: "text/plain"});
+            const blob = new Blob([vm.value], {type: "text/plain"});
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
