@@ -1003,28 +1003,24 @@
                 }
             }
             else if (this.tokenizer.tokenType() === KEYWORD) {
-                if (["true", "false", "null", "this"].includes(this.tokenizer.keyWord().description)) {
-                    this.putToken();
+                const keyword = this.tokenizer.keyWord();
+                if (keyword === KEYWORD_SYMBOLS["true"]) {
+                    this.vmWriter.writePush("constant", 1);
+                    this.vmWriter.writeArithmetic("neg");
+                }
+                else if (keyword === KEYWORD_SYMBOLS["false"]) {
+                    this.vmWriter.writePush("constant", 0);
+                }
+                else if (keyword === KEYWORD_SYMBOLS["null"]) {
+                    this.vmWriter.writePush("constant", 0);
+                }
+                else if (keyword === KEYWORD_SYMBOLS["this"]) {
+                    this.vmWriter.writePush("pointer", 0);
                 }
                 else {
                     this.throwInvalidToken();
                 }
-
-                switch (this.tokenizer.keyWord().description) {
-                case "true":
-                    this.vmWriter.writePush("constant", 1);
-                    this.vmWriter.writeArithmetic("neg");
-                    break;
-                case "false":
-                    this.vmWriter.writePush("constant", 0);
-                    break;
-                case "null":
-                    this.vmWriter.writePush("constant", 0);
-                    break;
-                case "this":
-                    this.vmWriter.writePush("pointer", 0);
-                    break;
-                }
+                this.putToken();
             }
             else if (this.tokenizer.tokenType() === SYMBOL) {
                 if (this.tokenizer.symbol() === "(") {
@@ -1098,7 +1094,10 @@
                         // instance method call
                         const varType = this.getVarType(name);
 
-                        if (varType === "int" || varType === "char" || varType === "boolean") {
+                        if (varType === KEYWORD_SYMBOLS["int"]
+                            || varType === KEYWORD_SYMBOLS["char"]
+                            || varType === KEYWORD_SYMBOLS["boolean"]
+                        ) {
                             this.throwPosMessage(`Invalid type subroutine call ${varType}.${subroutineName}`);
                         }
     
@@ -1259,8 +1258,13 @@
             }
             const jackCompiler = new JackCompiler(inFileName, jackText);
             // jackCompiler.setFileName(outFileName);
-            const vmText = jackCompiler.compile();
-            vm.value = vmText;
+            try {
+                const vmText = jackCompiler.compile();
+                vm.value = vmText;
+            }
+            catch (e) {
+                vm.value = e.message;
+            }
         });
         const loadJack = document.getElementById("load_jack");
         loadJack.addEventListener("change", (e) => {

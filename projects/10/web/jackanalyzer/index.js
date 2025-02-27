@@ -901,8 +901,13 @@
             }
             const jackAnalyzer = new JackAnalyzer(inFileName, jackText);
             // jackAnalyzer.setFileName(outFileName);
-            const xmlText = jackAnalyzer.analyze();
-            xml.value = xmlText;
+            try {
+                const xmlText = jackAnalyzer.analyze();
+                xml.value = xmlText;
+            }
+            catch (e) {
+                xml.value = e.message;
+            }
         });
         const loadJack = document.getElementById("load_jack");
         loadJack.addEventListener("change", (e) => {
