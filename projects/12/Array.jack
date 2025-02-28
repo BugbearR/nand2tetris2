@@ -1,10 +1,12 @@
 class Array {
     /** Constructs a new Array of the given size. */
-    function Array new(int size) {
-        
+    function Array new(int size) { // not constuction
+        let p = Memory.alloc(size);
+        return p
     }
 
     /** Disposes this array. */
     method void dispose() {
+        do Memory.deAlloc(this);
     }
 }
