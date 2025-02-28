@@ -1,0 +1,24 @@
+class Memory {
+
+    /** Initializes the class. */
+    function void init() {
+    }
+
+    /** Returns the RAM value at the given address. */
+    function int peek(int address) {
+    }
+
+    /** Sets the RAM value at the given address to the given value. */
+    function void poke(int address, int value) {
+    }
+
+    /** Finds an available RAM block of the given size and returns
+     *  a reference to its base address. */
+    function int alloc(int size) {
+    }
+
+    /** De-allocates the given object (cast as an array) by making
+     *  it available for future allocations. */
+    function void deAlloc(Array o) {
+    }    
+}
