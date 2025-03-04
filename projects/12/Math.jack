@@ -50,6 +50,50 @@ class Math {
      *  an an expression, it handles it by invoking this method.
      *  Thus, x/y and Math.divide(x,y) return the same value. */
     function int divide(int x, int y) {
+        var int r, mask, xf, yf, f, i;
+        var Array a;
+
+        if (y = 0) {
+            // divide by zero
+            // QQQ report to user.
+            Sys.halt(); // return 32767; (?)
+        }
+
+        let mask = 32767 + 1; // 0x8000
+        let xf = x & mask;
+        let yf = y & mask;
+        if (xf) {
+            let x = -x;
+        }
+        if (yf) {
+            let y = -y;
+        }
+        let f = (xf | yf) & (~xf | ~yf);
+
+        let i = 0;
+        let a = Array.new(16);
+        while ((y > 0) & (y < x)) {
+            let a[i] = y; // a[i] = y * 2^i
+            let y = y + y;
+            let i = i + 1;
+        }
+
+        let r = 0;
+        while (i > 0) {
+            let i = i - 1;
+            let r = r + r;
+            if (!(x < a[i])) { // x >= a[i]
+                let x = x - a[i];
+                let r = r + 1;
+            }
+        }
+
+        if (f) {
+            let r = -r;
+        }
+
+        a.dispose();
+        return r;
     }
 
     /** Returns the integer part of the square root of x. */
