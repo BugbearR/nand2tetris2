@@ -58,13 +58,25 @@ class Math {
 
     /** Returns the greater value. */
     function int max(int a, int b) {
+        if (b > a) {
+            return b;
+        }
+        return a;
     }
 
     /** Returns the smaller value. */
     function int min(int a, int b) {
+        if (b < a) {
+            return b;
+        }
+        return a;
     }
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
     }
 }
