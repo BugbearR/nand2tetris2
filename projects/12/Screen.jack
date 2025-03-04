@@ -1,16 +1,27 @@
 class Screen {
+    static Array SCREEN; // 0x4000
+    static boolean color;
 
     /** Initializes the Screen. */
     function void init() {
+        SCREEN = 16384;
+        color = 0;
     }
 
     /** Erases the entire screen. */
     function void clearScreen() {
+        var int p;
+        let p = 8192;
+        while (p) {
+            let p = p - 1;
+            SCREEN[p] = 0;
+        }
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
+        color = b;
     }
 
     /** Draws the (x,y) pixel, using the current color. */
