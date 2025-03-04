@@ -34,8 +34,8 @@ class Math {
 
                 sum = sum + x;
             }
-            x = x * 2;
-            mask = mask * 2;
+            x = x + x;
+            mask = mask + mask;
         }
 
         if (f != 0) {
