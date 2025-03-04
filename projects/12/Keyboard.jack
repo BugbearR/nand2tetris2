@@ -25,6 +25,8 @@ class Keyboard {
      * F1 - F12 = 141 - 152
      */
     function char keyPressed() {
+        var Array keyPort = 24576;
+        return keyPort[0];
     }
 
     /**	Waits until a key is pressed on the keyboard and released,
