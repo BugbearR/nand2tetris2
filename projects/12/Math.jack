@@ -11,6 +11,38 @@ class Math {
      *  in an expression, it handles it by invoking this method. 
      *  Thus, in Jack, x * y and Math.multiply(x,y) return the same value. */
     function int multiply(int x, int y) {
+        var int sum, mask, xf, yf, f;
+        sum = 0;
+        mask = 32767 + 1; // 0x8000
+
+        xf = x & mask;
+        yf = y & mask;
+        if (xf != 0) {
+            x = -x;
+        }
+        if (yf != 0) {
+            y = -y;
+        }
+        f = (xf | yf) & (~xf | ~yf);
+
+        mask = 1;
+        while (mask < y && mask > 0) {
+            if (y & mask != 0) {
+                // if (32767 - sum < x) {
+                //    // overflow!
+                // }
+
+                sum = sum + x;
+            }
+            x = x * 2;
+            mask = mask * 2;
+        }
+
+        if (f != 0) {
+            sum = -sum;
+        }
+
+        return sum;
     }
 
     /** Returns the integer part of x / y.
