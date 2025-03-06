@@ -1,9 +1,21 @@
 class Math {
-    static int n;             // Number of bits used for representing a two's complement integer
+    static int numOfIntegerBits;    // Number of bits used for representing a two's complement integer
     static Array powersOfTwo; // Stores 2^0, 2^1, 2^2,..., 2^(n-1)
 
     // Initializes the Math library.
     function void init() {
+        var i, mask;
+
+        let numOfIntegerBits = 16;
+
+        let powersOfTwo = Array.new(numOfIntegerBits);
+        let mask = 1;
+        let i = 0;
+        while (i < numOfIntegerBits) {
+            let powersOfTwo[i] = mask;
+            let mask = mask + mask;
+            let i = i + 1;
+        }
     }
 
     /** Returns the product of x and y. 
@@ -98,6 +110,26 @@ class Math {
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+        var sq, i;
+        if (x < 0) { // imaginary number
+            // QQQ report to user.
+            Sys.halt();
+        }
+
+        if (x < 2) {
+            return x;
+        }
+
+        let i = getHighestBit(x);
+        while (i > -1) {
+            let t = r + powersOfTwo[i];
+            let sq = t * t;
+            if (!(x < sq)) {
+                let r = t;
+            }
+            let i = i - 1;
+        }
+        return r;
     }
 
     /** Returns the greater value. */
@@ -122,5 +154,32 @@ class Math {
             return -x;
         }
         return x;
+    }
+
+    function int getPowerOfTwo(int n) {
+        // XXX no check.
+        // if ((n < 0) | !(n < numOfIntegerBits)) { // overrun
+        //     // QQQ report to user.
+        //     Sys.halt();
+        // }
+        return powersOfTwo[n];
+    }
+
+    function int getHighestBit(int x) {
+        var int r, mask;
+        if (x < 0) {
+            return numOfIntegerBits - 1;
+        }
+        if (x == 0) {
+            return -1;
+        }
+
+        let r = 0;
+        let mask = 1;
+        while (mask < x) {
+            let mask = mask + mask + 1;
+            let r = r + 1;
+        }
+        return r;
     }
 }
