@@ -1,11 +1,14 @@
 class Screen {
+    static int WIDTH, HEIGHT;
     static Array SCREEN; // 0x4000
     static boolean color;
 
     /** Initializes the Screen. */
     function void init() {
-        SCREEN = 16384;
-        color = 0;
+        let WIDTH = 512;
+        let HEIGHT = 256;
+        let SCREEN = 16384;
+        let color = 0;
     }
 
     /** Erases the entire screen. */
@@ -14,22 +17,100 @@ class Screen {
         let p = 8192;
         while (p) {
             let p = p - 1;
-            SCREEN[p] = 0;
+            let SCREEN[p] = 0;
         }
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
-        color = b;
+        let color = b;
     }
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
+        var int p, mask;
+
+        if ((x < 0) | !(x < WIDTH) | (y < 0) | !(y < HEIGHT)) {
+            return;
+        }
+
+        let p = (32 * y) + (x / 16);
+        let mask = Math.powerOfTwo(x & 15); // powerOfTwo[x & 15]
+        if (color) {
+            let SCREEN[p] = SCREEN[p] | mask;
+        }
+        else {
+            let SCREEN[p] = SCREEN[p] & ~mask;
+        }
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
+        var int dx, dy, mx, my, sx, sy, x, y;
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+
+        if (dx > 0) {
+            let mx = 1;
+            let dx = dx + 1;
+        }
+        else {
+            if (dx < 0) {
+                let mx = -1;
+                let dx = -dx + 1;
+            }
+            else {
+                let mx = 1;
+                let dx = 1;
+            }
+        }
+
+        if (dy > 0) {
+            let my = 1;
+            let dy = dy + 1;
+        }
+        else {
+            if (dy < 0) {
+                let my = -1;
+                let dy = -dy + 1;
+            }
+            else {
+                let my = 1;
+                let dy = 1;
+            }
+        }
+
+        let sx = 0;
+        let sy = 0;
+        let x = x1;
+        let y = y1;
+        if (dx > dy) {
+            // move x
+            while (sx < dx) {
+                drawPixel(x, y);
+                let sx = sx + 1;
+                let x = x + mx;
+                let sy = sy + dy;
+                if (!(sy < dx)) {
+                    let sy = sy - dx;
+                    let y = y + my;
+                }
+            }
+        }
+        else {
+            // move y
+            while (sy < dy) {
+                drawPixel(x, y);
+                let sy = sy + 1;
+                let y = y + my;
+                let sx = sx + dx;
+                if (!(sx < dy)) {
+                    let sx = sx - dy;
+                    let x = x + mx;
+                }
+            }
+        }
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
