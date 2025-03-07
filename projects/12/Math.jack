@@ -29,17 +29,17 @@ class Math {
 
         let xf = x & mask;
         let yf = y & mask;
-        if (xf) {
+        if (~(xf = 0)) {
             let x = -x;
         }
-        if (yf) {
+        if (~(yf = 0)) {
             let y = -y;
         }
         let f = (xf | yf) & (~xf | ~yf);
 
         let mask = 1;
-        while ((mask < y) & (mask > 0)) {
-            if (y & mask) {
+        while (~(y < mask) & (mask > 0)) {
+            if (~((y & mask) = 0)) {
                 // if ((32767 - sum) < x) {
                 //    // overflow!
                 // }
@@ -50,7 +50,7 @@ class Math {
             let mask = mask + mask;
         }
 
-        if (f) {
+        if (~(f = 0)) {
             let sum = -sum;
         }
 
@@ -68,16 +68,16 @@ class Math {
         if (y = 0) {
             // divide by zero
             // QQQ report to user.
-            Sys.halt(); // return 32767; (?)
+            do Sys.halt(); // return 32767; (?)
         }
 
         let mask = 32767 + 1; // 0x8000
         let xf = x & mask;
         let yf = y & mask;
-        if (xf) {
+        if (~(xf = 0)) {
             let x = -x;
         }
-        if (yf) {
+        if (~(yf = 0)) {
             let y = -y;
         }
         let f = (xf | yf) & (~xf | ~yf);
@@ -94,17 +94,17 @@ class Math {
         while (i > 0) {
             let i = i - 1;
             let r = r + r;
-            if (!(x < a[i])) { // x >= a[i]
+            if (~(x < a[i])) { // x >= a[i]
                 let x = x - a[i];
                 let r = r + 1;
             }
         }
 
-        if (f) {
+        if (~(f = 0)) {
             let r = -r;
         }
 
-        a.dispose();
+        do a.dispose();
         return r;
     }
 
