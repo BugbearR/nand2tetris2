@@ -4,7 +4,7 @@ class Math {
 
     // Initializes the Math library.
     function void init() {
-        var i, mask;
+        var int i, mask;
 
         let numOfIntegerBits = 16;
 
@@ -16,6 +16,7 @@ class Math {
             let mask = mask + mask;
             let i = i + 1;
         }
+        return;
     }
 
     /** Returns the product of x and y. 
@@ -110,21 +111,22 @@ class Math {
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
-        var sq, i;
+        var int sq, i, r, t;
         if (x < 0) { // imaginary number
             // QQQ report to user.
-            Sys.halt();
+            do Sys.halt();
         }
 
         if (x < 2) {
             return x;
         }
 
-        let i = getHighestBit(x);
+        let r = 0;
+        let i = Math.getHighestBit(x);
         while (i > -1) {
             let t = r + powersOfTwo[i];
             let sq = t * t;
-            if (!(x < sq)) {
+            if (~(x < sq)) {
                 let r = t;
             }
             let i = i - 1;
@@ -156,7 +158,7 @@ class Math {
         return x;
     }
 
-    function int getPowerOfTwo(int n) {
+    function int getPowersOfTwo(int n) {
         // XXX no check.
         // if ((n < 0) | !(n < numOfIntegerBits)) { // overrun
         //     // QQQ report to user.
@@ -170,7 +172,7 @@ class Math {
         if (x < 0) {
             return numOfIntegerBits - 1;
         }
-        if (x == 0) {
+        if (x = 0) {
             return -1;
         }
 
@@ -183,7 +185,7 @@ class Math {
         return r;
     }
 
-    function sgn(x) {
+    function int sgn(int x) {
         if (x < 0) {
             return -1;
         }
