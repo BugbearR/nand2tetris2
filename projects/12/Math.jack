@@ -1,6 +1,7 @@
 class Math {
     static int numOfIntegerBits;    // Number of bits used for representing a two's complement integer
     static Array powersOfTwo; // Stores 2^0, 2^1, 2^2,..., 2^(n-1)
+    static Array squarePowersOfTwo; // 2^0, (2^1)^2, (2^2)^2, ..., (2^((n/2)-1))^2
 
     // Initializes the Math library.
     function void init() {
@@ -13,6 +14,14 @@ class Math {
         let i = 0;
         while (i < numOfIntegerBits) {
             let powersOfTwo[i] = mask;
+            let mask = mask + mask;
+            let i = i + 1;
+        }
+        let squarePowersOfTwo = Array.new(numOfIntegerBits / 2);
+        let mask = 1;
+        let i = 0;
+        while (i < (numOfIntegerBits / 2)) {
+            let squarePowersOfTwo[i] = mask * mask;
             let mask = mask + mask;
             let i = i + 1;
         }
@@ -85,7 +94,7 @@ class Math {
 
         let i = 0;
         let a = Array.new(16);
-        while ((y > 0) & (y < x)) {
+        while ((y > 0) & ~(y > x)) {
             let a[i] = y; // a[i] = y * 2^i
             let y = y + y;
             let i = i + 1;
@@ -111,7 +120,8 @@ class Math {
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
-        var int sq, i, r, t;
+        var int sq, i, maxI, r, t;
+        var String str;
         if (x < 0) { // imaginary number
             // QQQ report to user.
             do Sys.halt();
@@ -121,12 +131,25 @@ class Math {
             return x;
         }
 
+        // avoid overflow
+        if (x > 32760) { // 32761 = 181 * 181
+            return 181;
+        }
+
+        let i = 0;
+        let maxI = 0;
+        while (i < (numOfIntegerBits / 2)) {
+            if (~(x < squarePowersOfTwo[i])) {
+                let maxI = i;
+            }
+            let i = i + 1;
+        }
         let r = 0;
-        let i = Math.getHighestBit(x);
+        let i = maxI;
         while (i > -1) {
             let t = r + powersOfTwo[i];
             let sq = t * t;
-            if (~(x < sq)) {
+            if ((t < 181) & ~(x < sq)) {
                 let r = t;
             }
             let i = i - 1;
