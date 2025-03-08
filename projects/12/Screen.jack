@@ -2,13 +2,25 @@ class Screen {
     static int WIDTH, HEIGHT;
     static Array SCREEN; // 0x4000
     static boolean color;
+    static Array FILL_PATTERN;
 
     /** Initializes the Screen. */
     function void init() {
+        var int i, mask;
         let WIDTH = 512;
         let HEIGHT = 256;
         let SCREEN = 16384;
         let color = 0;
+
+        let FILL_PATTERN = Array.new(16);
+        let i = 0;
+        let mask = -1; // 0xffff
+        while (i < 16) {
+            let FILL_PATTERN[i] = mask;
+            let mask = mask + mask;
+            let i = i + 1;
+        }
+        return;
     }
 
     /** Erases the entire screen. */
@@ -19,30 +31,33 @@ class Screen {
             let p = p - 1;
             let SCREEN[p] = 0;
         }
+        return;
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
         let color = b;
+        return;
     }
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
         var int p, mask;
 
-        if ((x < 0) | !(x < WIDTH) | (y < 0) | !(y < HEIGHT)) {
+        if ((x < 0) | ~(x < WIDTH) | (y < 0) | ~(y < HEIGHT)) {
             return;
         }
 
         let p = (32 * y) + (x / 16);
-        let mask = Math.powerOfTwo(x & 15); // powerOfTwo[x & 15]
+        let mask = Math.getPowersOfTwo(x & 15); // powerOfTwo[x & 15]
         if (color) {
             let SCREEN[p] = SCREEN[p] | mask;
         }
         else {
             let SCREEN[p] = SCREEN[p] & ~mask;
         }
+        return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
@@ -88,11 +103,11 @@ class Screen {
         if (dx > dy) {
             // move x
             while (sx < dx) {
-                drawPixel(x, y);
+                do Screen.drawPixel(x, y);
                 let sx = sx + 1;
                 let x = x + mx;
                 let sy = sy + dy;
-                if (!(sy < dx)) {
+                if (~(sy < dx)) {
                     let sy = sy - dx;
                     let y = y + my;
                 }
@@ -101,24 +116,123 @@ class Screen {
         else {
             // move y
             while (sy < dy) {
-                drawPixel(x, y);
+                do Screen.drawPixel(x, y);
                 let sy = sy + 1;
                 let y = y + my;
                 let sx = sx + dx;
-                if (!(sx < dy)) {
+                if (~(sx < dy)) {
                     let sx = sx - dy;
                     let x = x + mx;
                 }
             }
         }
+        return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      *  and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int t, x1p, x2p, x1b, x2b, x1bn, x2bn, x, y, p, py;
+        // swap
+        if (x2 < x1) {
+            let t = x2;
+            let x1 = x2;
+            let x2 = t;
+        }
+
+        if (y2 < y1) {
+            let t = y1;
+            let y1 = y2;
+            let y2 = t;
+        }
+
+        // if out of screen, nothing to do.
+        if (~(x1 < WIDTH) | ~(y1 < WIDTH) | (x2 < 0) | (y2 < 0)) {
+            return;
+        }
+
+        // clipping
+        if (x1 < 0) {
+            let x1 = 0;
+        }
+        if (y1 < 0) {
+            let y1 = 0;
+        }
+        if (~(x2 < WIDTH)) {
+            let x2 = WIDTH - 1;
+        }
+        if (~(y2 < HEIGHT)) {
+            let y2 = HEIGHT - 1;
+        }
+
+        let x2 = x2 + 1;
+        let y2 = y2 + 1;
+
+        let x1p = x1 / 16;
+        let x2p = x2 / 16;
+        let x1bn = (x1 & 15);
+        let x2bn = (x2 & 15);
+        let x1b = FILL_PATTERN[x1bn];
+        let x2b = ~FILL_PATTERN[x2bn];
+        if (x1p = x2p) {
+            let x1b = x1b & x2b;
+            let y = y1;
+            let p = (y * 32) + x1p;
+            while (y < y2) {
+                if (color) {
+                    let SCREEN[p] = SCREEN[p] | x1b;
+                }
+                else {
+                    let SCREEN[p] = SCREEN[p] & ~x1b;
+                }
+                let p = p + 32;
+                let y = y + 1;
+            }
+        }
+        else {
+            let y = y1;
+            let py = y * 32 + x1p;
+            while (y < y2) {
+                let p = py;
+                if (color) {
+                    let SCREEN[p] = SCREEN[p] | x1b;
+                }
+                else {
+                    let SCREEN[p] = SCREEN[p] & ~x1b;
+                }
+                let p = p + 1;
+
+                let x = x1p + 1;
+                while (x < x2p) {
+                    let SCREEN[p] = color;
+                    let p = p + 1;
+                    let x = x + 1;
+                }
+
+                if (color) {
+                    let SCREEN[p] = SCREEN[p] | x2b;
+                }
+                else {
+                    let SCREEN[p] = SCREEN[p] & ~x2b;
+                }
+                let py = py + 32;
+                let y = y + 1;
+            }
+        }
+        return;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
+        var int dx, dy;
+
+        let dy = 0;
+        while (~(r < dy)) {
+            let dx = Math.sqrt((r + dy) * (r - dy)); // r * r - dy * dy
+            do Screen.drawRectangle(x - dx, y - dy, x + dx, y - dy);
+            do Screen.drawRectangle(x - dx, y + dy, x + dx, y + dy);
+            let dy = dy + 1;
+        }
+        return;
     }
 }
