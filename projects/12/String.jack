@@ -1,52 +1,158 @@
 class String {
+    field int m_maxLength;
+    field int m_length;
+    field Array m_s;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
+        if (maxLength < 0) {
+            do Sys.error(1011);
+        }
+        if (maxLength = 0) {
+            let m_s = null;
+        }
+        else {
+            let m_s = Array.new(maxLength);
+        }
+        let m_maxLength = maxLength;
+        let m_length = 0;
+        return this;
     }
 
     /** Disposes this string. */
     method void dispose() {
+        let m_length = 0;
+        let m_maxLength = 0;
+        if (~(m_s = null)) {
+            do m_s.dispose();
+        }
+        return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
+        return m_length;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
+        if ((j < 0) | ~(j < m_length)) { // (m_length <= j)
+            // Sys.error(1012);
+            return 0;
+        }
+        // do Output.printInt(j);
+        // do Output.println();
+        // do Output.printInt(m_s[j]);
+        // do Output.println();
+        return m_s[j];
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
+        if ((j < 0) | ~(j < m_maxLength)) {
+            // Sys.error(1013);
+            return;
+        }
+        if (~(j < m_length)) { // auto extend
+            let m_length = j + 1;
+        }
+        let m_s[j] = c;
+        return;
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
+        if (~(m_length < m_maxLength)) {
+            // Sys.error(1014);
+            return this; // error?
+        }
+        let m_s[m_length] = c;
+        let m_length = m_length + 1;
+        return this;
     }
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+        if (m_length = 0) {
+            // Sys.error(1015);
+            return;
+        }
+        let m_s[m_length - 1] = 0;
+        let m_length = m_length - 1;
+        return;
     }
 
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+        var int i, r;
+        var char c;
+        var boolean minusFlag;
+
+        let i = 0;
+        let r = 0;
+        if ((m_length > 0) & (m_s[0] = 45)) {
+            let i = 1;
+            let minusFlag = true;
+        }
+
+        while (i < m_length) {
+            let c = m_s[i];
+            if ((c < 48) | (c > 57)) {
+                return r;
+            }
+            let r = (r * 10) + (c - 48);
+            let i = i + 1;
+        }
+
+        if (minusFlag) {
+            let r = -r;
+        }
+
+        return r;
+    }
+
+    method void setIntSub(int val) {
+        var int t;
+
+        if (val > 10) {
+            let t = val / 10;
+            do setIntSub(t);
+            let val = val - (t * 10);
+        }
+
+        do appendChar(val + 48);
+
+        return;
     }
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
+        let m_length = 0;
+
+        if (val < 0) {
+            do appendChar(45); // -
+            let val = -val;
+        }
+
+        do setIntSub(val);
+
+        return;
     }
 
     /** Returns the new line character. */
     function char newLine() {
+        return 128;
     }
 
     /** Returns the backspace character. */
     function char backSpace() {
+        return 129;
     }
 
     /** Returns the double quote (") character. */
     function char doubleQuote() {
+        return 34;
     }
 }
