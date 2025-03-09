@@ -1,9 +1,31 @@
 class Math {
-    static int n;             // Number of bits used for representing a two's complement integer
+    static int numOfIntegerBits;    // Number of bits used for representing a two's complement integer
     static Array powersOfTwo; // Stores 2^0, 2^1, 2^2,..., 2^(n-1)
+    static Array squarePowersOfTwo; // 2^0, (2^1)^2, (2^2)^2, ..., (2^((n/2)-1))^2
 
     // Initializes the Math library.
     function void init() {
+        var int i, mask;
+
+        let numOfIntegerBits = 16;
+
+        let powersOfTwo = Array.new(numOfIntegerBits);
+        let mask = 1;
+        let i = 0;
+        while (i < numOfIntegerBits) {
+            let powersOfTwo[i] = mask;
+            let mask = mask + mask;
+            let i = i + 1;
+        }
+        let squarePowersOfTwo = Array.new(numOfIntegerBits / 2);
+        let mask = 1;
+        let i = 0;
+        while (i < (numOfIntegerBits / 2)) {
+            let squarePowersOfTwo[i] = mask * mask;
+            let mask = mask + mask;
+            let i = i + 1;
+        }
+        return;
     }
 
     /** Returns the product of x and y. 
@@ -11,6 +33,38 @@ class Math {
      *  in an expression, it handles it by invoking this method. 
      *  Thus, in Jack, x * y and Math.multiply(x,y) return the same value. */
     function int multiply(int x, int y) {
+        var int sum, mask, xf, yf, f;
+        let sum = 0;
+        let mask = 32767 + 1; // 0x8000
+
+        let xf = x & mask;
+        let yf = y & mask;
+        if (~(xf = 0)) {
+            let x = -x;
+        }
+        if (~(yf = 0)) {
+            let y = -y;
+        }
+        let f = (xf | yf) & (~xf | ~yf);
+
+        let mask = 1;
+        while (~(y < mask) & (mask > 0)) {
+            if (~((y & mask) = 0)) {
+                // if ((32767 - sum) < x) {
+                //    // overflow!
+                // }
+
+                let sum = sum + x;
+            }
+            let x = x + x;
+            let mask = mask + mask;
+        }
+
+        if (~(f = 0)) {
+            let sum = -sum;
+        }
+
+        return sum;
     }
 
     /** Returns the integer part of x / y.
@@ -18,21 +72,112 @@ class Math {
      *  an an expression, it handles it by invoking this method.
      *  Thus, x/y and Math.divide(x,y) return the same value. */
     function int divide(int x, int y) {
+        var int r, mask, xf, yf, f, i;
+        var Array a;
+
+        if (y = 0) {
+            // divide by zero
+            // QQQ report to user.
+            do Sys.halt(); // return 32767; (?)
+        }
+
+        let mask = 32767 + 1; // 0x8000
+        let xf = x & mask;
+        let yf = y & mask;
+        if (~(xf = 0)) {
+            let x = -x;
+        }
+        if (~(yf = 0)) {
+            let y = -y;
+        }
+        let f = (xf | yf) & (~xf | ~yf);
+
+        let i = 0;
+        let a = Array.new(16);
+        while ((y > 0) & ~(y > x)) {
+            let a[i] = y; // a[i] = y * 2^i
+            let y = y + y;
+            let i = i + 1;
+        }
+
+        let r = 0;
+        while (i > 0) {
+            let i = i - 1;
+            let r = r + r;
+            if (~(x < a[i])) { // x >= a[i]
+                let x = x - a[i];
+                let r = r + 1;
+            }
+        }
+
+        if (~(f = 0)) {
+            let r = -r;
+        }
+
+        do a.dispose();
+        return r;
     }
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+        var int sq, i, maxI, r, t;
+        var String str;
+        if (x < 0) { // imaginary number
+            // QQQ report to user.
+            do Sys.halt();
+        }
+
+        if (x < 2) {
+            return x;
+        }
+
+        // avoid overflow
+        if (x > 32760) { // 32761 = 181 * 181
+            return 181;
+        }
+
+        let i = 0;
+        let maxI = 0;
+        while (i < (numOfIntegerBits / 2)) {
+            if (~(x < squarePowersOfTwo[i])) {
+                let maxI = i;
+            }
+            let i = i + 1;
+        }
+        let r = 0;
+        let i = maxI;
+        while (i > -1) {
+            let t = r + powersOfTwo[i];
+            let sq = t * t;
+            if ((t < 181) & ~(x < sq)) {
+                let r = t;
+            }
+            let i = i - 1;
+        }
+        return r;
     }
 
     /** Returns the greater value. */
     function int max(int a, int b) {
+        if (b > a) {
+            return b;
+        }
+        return a;
     }
 
     /** Returns the smaller value. */
     function int min(int a, int b) {
+        if (b < a) {
+            return b;
+        }
+        return a;
     }
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
     }
 }
